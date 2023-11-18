@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "192940888759",
+    "project_id": "r-unity",
+    "storage_bucket": "r-unity.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:192940888759:android:51416f1b80957af0097332",
+        "android_client_info": {
+          "package_name": "com.event.event_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0uomRbaNpoYthXEL98w-QmSXs0Zr4ckA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
