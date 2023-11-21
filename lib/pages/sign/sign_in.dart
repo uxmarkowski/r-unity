@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:event_app/pages/sign/sign_up.dart';
 import 'package:event_app/pages/sign/sign_verification.dart';
+import 'package:event_app/widgets/user_message.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/app_bar.dart';
@@ -15,8 +17,35 @@ class SignInPage extends StatefulWidget {
 
 class _SignInPageState extends State<SignInPage> {
 
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+
   TextEditingController PhoneController=TextEditingController();
   FocusNode PhoneNode=FocusNode();
+
+  bool wait_bool=false;
+
+  Future<bool> CheckUserExist(phone) async{
+    setState(() {wait_bool=true;});
+    bool func_value=false;
+
+    // print(phone);
+    var users_collection=await firestore.collection("UsersCollection").get();
+    await Future.forEach(users_collection.docs, (doc) {
+      // print(doc.id);
+
+      if(doc.id==phone){
+        setState(() {wait_bool=false;});
+        // UserMessage("")
+        func_value=true;
+      }
+    });
+
+
+    setState(() {wait_bool=false;});
+    return func_value;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +71,20 @@ class _SignInPageState extends State<SignInPage> {
               ),
               Container(
                 margin: EdgeInsets.only(bottom: 12),
-                child: ButtonPro("Continue",(){
-                  final page = SignVerificationPage(nomber: "+"+PhoneController.text,data: null,is_sign_in: true,);
-                  Navigator.of(context).push(CustomPageRoute(page));
-                },false),
+                child: ButtonPro("Continue",() async{
+                  var user_exit=await CheckUserExist("+"+PhoneController.text);
+                  if(user_exit){
+                    print("User exist");
+                    // final page = SignVerificationPage(nomber: "+"+PhoneController.text,data: null,is_sign_in: true,);
+                    // Navigator.of(context).push(CustomPageRoute(page));
+                  } else {
+                    UserMessage("User with this nomber don't exist", context);
+
+                    // final page = SignUpPage();
+                    // Navigator.of(context).push(CustomPageRoute(page));
+                  }
+
+                },wait_bool),
               )
             ]
         ),

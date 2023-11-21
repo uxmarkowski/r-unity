@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../pages/events/event_page.dart';
 import '../pages/other_user_page.dart';
@@ -20,6 +21,64 @@ PreferredSizeWidget AppBarPro(title) {
     elevation: 1,
     title: Text(title,style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),),
     centerTitle: true,
+  );
+}
+
+PreferredSizeWidget EventAppBarPro({required title,required data}) {
+  return AppBar(
+    backgroundColor: Colors.white,
+    foregroundColor: Colors.black,
+    elevation: 1,
+    title: Text(title,style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),),
+    centerTitle: true,
+    actions: [
+      if((data as Map).containsKey("instagram"))
+      InkWell(
+        onTap: () async{
+          var url = data['instagram'];
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          } else {
+          throw 'Could not launch $url';
+          }
+        },
+        child: Opacity(opacity: 0.4,
+          child: SvgPicture.asset("lib/assets/Icons/Light/Instagram.svg")),
+      ),
+      SizedBox(width: 8),
+      if((data as Map).containsKey("facebook"))
+      InkWell(
+        onTap: () async{
+
+          var url = data['facebook'];
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          } else {
+          throw 'Could not launch $url';
+          }
+
+        },
+        child: Opacity(opacity: 0.4,
+            child: SvgPicture.asset("lib/assets/Icons/Light/Facebook.svg")
+        ),
+      ),
+      SizedBox(width: 12,)
+    ],
+  );
+}
+
+PreferredSizeWidget SignAppBarPro(title,flag) {
+  return AppBar(
+    backgroundColor: Colors.white,
+    foregroundColor: Colors.black,
+    elevation: 1,
+    title: Text(title,style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),),
+    centerTitle: true,
+    actions: [
+
+    ],
   );
 }
 
@@ -97,7 +156,7 @@ Widget BalanceFormPro(controller,node,hint,margin,textfield,suffix) {
   );
 }
 
-Widget MessageFieldPro(context,controller,node,hint,space_left,onFieldSubmitted) {
+Widget MessageFieldPro({required context,required controller,required node,required hint,required space_left,required onFieldSubmitted,required onChanged}) {
   return Container(
     width: MediaQuery.of(context).size.width-24-28-12*2-space_left,
     padding: EdgeInsets.symmetric(horizontal: 12),
@@ -108,6 +167,9 @@ Widget MessageFieldPro(context,controller,node,hint,space_left,onFieldSubmitted)
     child: TextFormField(
       onFieldSubmitted: (value){
         onFieldSubmitted();
+      },
+      onChanged: (value){
+        onChanged();
       },
       maxLines: null,
       focusNode: node,
@@ -267,6 +329,36 @@ Widget EventCard(context,data,getData){
                       )
                   ),
                 ),
+                if((data as Map).containsKey("approved"))...[
+                  if(!data["approved"]) ...[
+                    Positioned(
+                        top: 8,left: 8,
+                        child: Column(
+                          children: [
+                            if((data as Map).containsKey("approved"))...[
+                              if(data["approved"]) ...[
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(width: 1,color: Colors.white),
+                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 12,vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      Text("Waiting",style: TextStyle(fontWeight: FontWeight.w700,color: Colors.white,fontSize: 12),)
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(width: 8,)
+                              ]
+                            ],
+                          ],
+                        )
+                    ),
+                  ]
+                ],
+
                 Positioned(
                   bottom: 8,left: 8,
                   child: Row(
@@ -507,11 +599,16 @@ Widget ChatCard(Context,Name,LastMessage,Img,DocId,UnReaded) {
   );
 }
 
-Widget FriendCard(Context,Name,LastMessage,Img,DocId) {
+Widget FriendCard({required Context,required Name,required LastMessage,required Img,required DocId,required Phone,required NeedToAddFriend}) {
   return InkWell(
     onTap: (){
-      final page = OtherUserPage(user_doc: DocId,);
-      Navigator.of(Context).push(CustomPageRoute(page));
+      if (NeedToAddFriend){
+        Navigator.pop(Context,Phone);
+      } else {
+        final page = OtherUserPage(user_doc: DocId,);
+        Navigator.of(Context).push(CustomPageRoute(page));
+      }
+
     },
     child: Container(
       height: 64,
@@ -546,7 +643,7 @@ Widget FriendCard(Context,Name,LastMessage,Img,DocId) {
   );
 }
 
-Widget EventUserCard(Context,Name,Status,Img,DocId,IAmOrganizer,DeleteButton) {
+Widget EventUserCard(Context,Name,Status,Img,DocId,IAmOrganizer,DeleteButton,AddFromUsersList) {
   FirebaseAuth _auth = FirebaseAuth.instance;
 
   return GestureDetector(
@@ -596,10 +693,15 @@ Widget EventUserCard(Context,Name,Status,Img,DocId,IAmOrganizer,DeleteButton) {
               ),
             ],
           ),
-          if(DocId!=_auth.currentUser!.phoneNumber&&IAmOrganizer)...[
+          if(DocId!=_auth.currentUser!.phoneNumber&&IAmOrganizer&&!Status.toString().startsWith("Wait"))...[
             InkWell(
                 onTap: DeleteButton,
                 child: SvgPicture.asset("lib/assets/Icons/Bold/Close.svg",width: 36,)
+            ),
+          ] else if(DocId!=_auth.currentUser!.phoneNumber&&IAmOrganizer&&Status.toString().startsWith("Wait")) ...[
+            InkWell(
+                onTap: AddFromUsersList,
+                child: SvgPicture.asset("lib/assets/Icons/Bold/Plus.svg",width: 36,)
             ),
           ]
         ],

@@ -46,6 +46,7 @@ class _UserPageState extends State<UserPage> {
   var MyOrgEvents=[];
   var Phone="";
   var IsAdmin=false;
+  var RussianLanguage=false;
   var balance=0;
 
   void SignOut() async{
@@ -155,63 +156,13 @@ class _UserPageState extends State<UserPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     ProfileButton("Setting.svg",() async{
-                      // final page = CardFormScreen();
-                      // Navigator.of(context).push(CustomPageRoute(page));
 
-                      // TestFunc();
-
-
-                      // var tt=LatLng(34.052235,-118.243683);
-                      //
-                      // await firestore.collection("UsersCollection").doc("+79788759241").collection("Notifications").add({
-                      //   "title":"Тест",
-                      //   "date":DateTime.now().millisecondsSinceEpoch,
-                      // });
-
-                      // await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).collection("Notifications").add({
-                      //   "title":"Sergei sent you a friend request",
-                      //   "photo":"https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fG1hbnxlbnwwfHwwfHx8MA%3D%3D",
-                      //   "type":"friends_request",
-                      //   "check":false,
-                      //   "user_id":_auth.currentUser!.phoneNumber,
-                      //   "date":DateTime.now().millisecondsSinceEpoch,
-                      // });
 
 
                       await firestore.collection("UsersCollection").doc("+79788759240").update({
                         "balance":1,
                       });
 
-                      // await firestore.collection("UsersCollection").doc("+13235960558").update({
-                      //   "admin":true,
-                      // });
-                      // await firestore.collection("UsersCollection").doc("+79788759240").update({
-                      //   "admin":true,
-                      // });
-                      // await firestore.collection("UsersCollection").doc("+79788759241").update({
-                      //   "admin":true,
-                      // });
-
-
-                      // await firestore.collection("Events").doc("DEmdmSWOc8LgcKBpsw3I").update({
-                      //   "approved":false,
-                      // });
-
-                      PDF(
-                        swipeHorizontal: true,
-                      ).cachedFromUrl('http://africau.edu/images/default/sample.pdf');
-
-
-
-                      //
-                      // var rr=await firestore.collection("UsersCollection").doc("+79788759240").get();
-                      // print("rr "+rr.data()!['test'].toString());
-                      // print("rr "+(rr.data()!['test'] as GeoPoint).latitude.toString());
-
-                      // await firestore.collection("UsersCollection").doc("+13235960558").update({
-                      //   "chat_requests":[],
-                      // });
-                      // service.showNotification(id: 3, title: "title", body: "body");
 
                     },0),
                     InkWell(
@@ -258,7 +209,7 @@ class _UserPageState extends State<UserPage> {
                 ListView.separated(
                     padding: EdgeInsets.all(0),
                     shrinkWrap: true,
-                    itemCount: 8,
+                    itemCount: 10,
                     physics: NeverScrollableScrollPhysics(),
                     itemBuilder: (context,index) {
                       switch (index){
@@ -269,7 +220,7 @@ class _UserPageState extends State<UserPage> {
                           });
                           case 1:
                           return ProfileButtons("tabler_users.svg","Friends",(){
-                            final page = FriendListPage();
+                            final page = FriendListPage(need_to_add_friend: false,);
                             Navigator.of(context).push(CustomPageRoute(page)).then((value) => GetData());
                           });
                         case 2:
@@ -302,9 +253,15 @@ class _UserPageState extends State<UserPage> {
                             );
                           });
                         case 7:
+                          return ProfileButtons("World.svg",(RussianLanguage ? "Russian":"English")+" language",() async{
+                            setState(() {
+                              RussianLanguage=!RussianLanguage;
+                            });
+                          });
+                        case 8:
                           return ProfileButtons("Exit.svg","Sign out",(){SignOut();});
 
-                        case 8:
+                        case 9:
                           return ProfileButtons("Exit.svg","Delete account",(){DeleteAccount();});
                       }
                       return ProfileButtons("Exit.svg","Sign out",(){});

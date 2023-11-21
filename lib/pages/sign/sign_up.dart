@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_list_pick/country_list_pick.dart' as CLP;
 import 'package:event_app/pages/sign/sign_verification.dart';
+import 'package:event_app/widgets/user_message.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/app_bar.dart';
@@ -27,6 +29,31 @@ class _SignUpPageState extends State<SignUpPage> {
   FocusNode LastNameNode=FocusNode();
   FocusNode PromoCodeNode=FocusNode();
   var Country="US";
+  bool LoadBool=false;
+
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  Future<bool> CheckUserExist(phone) async{
+    setState(() {LoadBool=true;});
+    bool func_value=false;
+
+    // print(phone);
+    var users_collection=await firestore.collection("UsersCollection").get();
+    await Future.forEach(users_collection.docs, (doc) {
+      // print(doc.id);
+
+      if(doc.id==phone){
+        setState(() {LoadBool=false;});
+        // UserMessage("")
+        func_value=true;
+      }
+    });
+
+
+    setState(() {LoadBool=false;});
+    return func_value;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -125,24 +152,29 @@ class _SignUpPageState extends State<SignUpPage> {
                       SizedBox(height: 24,),
                     ],
                   ),
-                  ButtonPro("Continue",(){
-                    final page = SignVerificationPage(nomber: "+"+PhoneController.text, data: {
-                      "phone":PhoneController.text,
-                      "nickname":NickNameController.text,
-                      "firstname":FirstNameController.text,
-                      "lastname":LastNameController.text,
-                      "promocode":LastNameController.text,
-                      "events":[],
-                      "organizer_events":[],
-                      "chats":[],
-                      "notifications":[],
-                      "role":0,
-                      "country":Country
-                    },
-                      is_sign_in: false,
-                    );
-                    Navigator.of(context).push(CustomPageRoute(page));
-                  },false)
+                  ButtonPro("Continue",() async{
+                    var user_exist=await CheckUserExist("+"+PhoneController.text);
+                    if(user_exist){
+                      UserMessage("User already exist", context);
+                    } else {
+                      final page = SignVerificationPage(nomber: "+"+PhoneController.text, data: {
+                        "phone":PhoneController.text,
+                        "nickname":NickNameController.text,
+                        "firstname":FirstNameController.text,
+                        "lastname":LastNameController.text,
+                        "promocode":LastNameController.text,
+                        "events":[],
+                        "organizer_events":[],
+                        "chats":[],
+                        "notifications":[],
+                        "role":0,
+                        "country":Country
+                      },
+                        is_sign_in: false,
+                      );
+                      Navigator.of(context).push(CustomPageRoute(page));
+                    }
+                  },LoadBool)
                 ]
             ),
           ),

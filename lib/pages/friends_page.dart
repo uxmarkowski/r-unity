@@ -11,7 +11,8 @@ import '../../widgets/bottom_nav_bar.dart';
 
 
 class FriendListPage extends StatefulWidget {
-  const FriendListPage({Key? key}) : super(key: key);
+  final need_to_add_friend;
+  const FriendListPage({Key? key,required this.need_to_add_friend}) : super(key: key);
 
   @override
   State<FriendListPage> createState() => _FriendListPageState();
@@ -27,18 +28,6 @@ class _FriendListPageState extends State<FriendListPage> {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
 
-  Future <bool> CheckReadedOrNot(ChatInfo) async{
-    await Future.forEach(ChatInfo.data()!['messages'], (message) {
-      if((message as Map)!['user']!=_auth.currentUser&&(message as Map).containsKey("status")){
-        if((message as Map)!['status']=="sent"){
-          return true;
-        };
-      }
-    });
-
-    return false;
-  }
-
   void GetFriends() async{
 
     FriendList = [];
@@ -46,18 +35,11 @@ class _FriendListPageState extends State<FriendListPage> {
     var FriendsDocs = MyData.data()!['friends'];
 
     await Future.forEach(FriendsDocs, (friend_doc) async{
-      // var ChatInfo=await firestore.collection("Chats").doc(doc as String?).get();
-      // var UnReaded=await CheckReadedOrNot(ChatInfo);
-      // var LastMessage=(ChatInfo.data()!['messages'] as List).where((element) => element['user']!=_auth.currentUser&&!(element['message'].toString().startsWith("http"))).last['message'];
-      //
-      // var UserrDoc=ChatInfo.data()!['getter']==_auth.currentUser!.phoneNumber ? ChatInfo.data()!['sender'] : ChatInfo.data()!['getter'];
       var UserInfo=await firestore.collection("UsersCollection").doc((friend_doc as Map)!['phone']).get();
-
-      // var NewDocData=doc.data(); NewDocData['doc_id']=doc.id;
-      // ChatList.add(NewDocData);
 
       FriendList.add({
         "name":UserInfo.data()!['nickname'],
+        "phone":UserInfo.data()!['phone'],
         "last_message":"Online",
         "unreaded":false,
         "photo":UserInfo.data()!['avatar_link'],
@@ -102,7 +84,15 @@ class _FriendListPageState extends State<FriendListPage> {
                   physics: NeverScrollableScrollPhysics(),
                   itemCount: FriendList.length,
                   itemBuilder: (context,index) {
-                    return FriendCard(context,FriendList[index]["name"],FriendList[index]["last_message"],FriendList[index]["photo"],FriendList[index]["id"],);
+                    return FriendCard(
+                      Context: context,
+                      Name: FriendList[index]["name"],
+                      LastMessage: FriendList[index]["last_message"],
+                      Img: FriendList[index]["photo"],
+                      Phone: FriendList[index]["phone"],
+                      DocId: FriendList[index]["id"],
+                      NeedToAddFriend: widget.need_to_add_friend
+                    );
                   },
                   separatorBuilder: (context,index) {
                     return Divider(height: 32,color: Colors.black45,);

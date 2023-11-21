@@ -29,6 +29,7 @@ class _EventListPageState extends State<EventListPage> {
 
   FirebaseAuth _auth = FirebaseAuth.instance;
   FirebaseFirestore firestore = FirebaseFirestore.instance;
+
   final storageRef = FirebaseStorage.instance.ref();
 
   int groupValue=0;

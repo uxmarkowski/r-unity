@@ -54,7 +54,13 @@ class _AddEventPageState extends State<AddEventPage> {
   TextEditingController AboutController2=TextEditingController();
 
   TextEditingController PriceController=TextEditingController();
+  TextEditingController MyWalletInstructionController=TextEditingController();
   TextEditingController MyWalletController=TextEditingController();
+  TextEditingController MyWalletLinkController=TextEditingController();
+
+  TextEditingController InstagramController=TextEditingController();
+  TextEditingController FacebookController=TextEditingController();
+
   TextEditingController MaxPeoplesController=TextEditingController();
   TextEditingController AdresController=TextEditingController();
   TextEditingController ShortAdresController=TextEditingController();
@@ -76,7 +82,13 @@ class _AddEventPageState extends State<AddEventPage> {
   FocusNode AboutNode2=FocusNode();
 
   FocusNode PriceNode=FocusNode();
+  FocusNode MyWalletInstructionNode=FocusNode();
   FocusNode MyWalletNode=FocusNode();
+  FocusNode MyWalletLinkNode=FocusNode();
+
+  FocusNode InstagramNode=FocusNode();
+  FocusNode FacebookNode=FocusNode();
+
   FocusNode MaxPeoplesNode=FocusNode();
   FocusNode AdresNode=FocusNode();
   FocusNode ShortAdresNode=FocusNode();
@@ -107,6 +119,8 @@ class _AddEventPageState extends State<AddEventPage> {
   bool image_load=false;
   bool additional_iamges=false;
   bool pay_with_my_wallet=false;
+  bool social_media_exist=false;
+  bool limited_unlimited_users=false;
 
 
   final ImagePicker _picker = ImagePicker();
@@ -139,7 +153,7 @@ class _AddEventPageState extends State<AddEventPage> {
     } else if(AdditionalTextLength>1&&((EventNameController2.text.length==0||AboutController2.text.length==0))){
       ScaffoldMessa("Please fill additional information");
       return false;
-    } else if(pay_with_my_wallet&&MyWalletController.text.length==0){
+    } else if(pay_with_my_wallet&&MyWalletInstructionController.text.length==0){
       ScaffoldMessa("Please fill payment instructions");
       return false;
     } else if(MaxPeoplesController.text.length==0){
@@ -175,7 +189,9 @@ class _AddEventPageState extends State<AddEventPage> {
     EventNameController.text=widget.data['header'];
     EventNameController1.text=(widget.data as Map).containsKey("header1") ? widget.data['header1'] : "";
     EventNameController2.text=(widget.data as Map).containsKey("header2") ? widget.data['header2'] : "";
-    MyWalletController.text=(widget.data as Map).containsKey("my_wallet_instructions") ? widget.data['my_wallet_instructions'] : "";
+    MyWalletInstructionController.text=(widget.data as Map).containsKey("my_wallet_instructions") ? widget.data['my_wallet_instructions'] : "";
+    MyWalletController.text=(widget.data as Map).containsKey("my_wallet") ? widget.data['my_wallet'] : "";
+    MyWalletLinkController.text=(widget.data as Map).containsKey("my_wallet_paylink") ? widget.data['my_wallet_paylink'] : "";
 
     AboutController.text=widget.data['about'];
     AboutController1.text=(widget.data as Map).containsKey("about1") ? widget.data['about1'] : "";
@@ -193,7 +209,7 @@ class _AddEventPageState extends State<AddEventPage> {
     ParkingInfoController.text=widget.data['parking_info'];
     IsOnline=widget.data['is_online'];
     InDoor=widget.data['is_indor'];
-    pay_with_my_wallet=(widget.data as Map).containsKey(pay_with_my_wallet) ? widget.data['pay_with_my_wallet'] : false;
+    pay_with_my_wallet=(widget.data as Map).containsKey("pay_with_my_wallet") ? widget.data['pay_with_my_wallet'] : false;
 
     if((widget.data as Map).containsKey("geo_point") ){
       if(widget.data['geo_point']!=""){
@@ -344,6 +360,8 @@ class _AddEventPageState extends State<AddEventPage> {
       "short_address":ShortAdresController.text,
       "location_info":LocationInfoController.text,
       "parking_info":ParkingInfoController.text,
+      "instagram":InstagramController.text,
+      "facebook":FacebookController.text,
       "is_online":IsOnline,
       "is_indor":InDoor,
       "peoples":0,
@@ -354,11 +372,15 @@ class _AddEventPageState extends State<AddEventPage> {
       "photo_link": urrr.toString(),
       "additional_photo_links": AdditinalImgLinks,
       "pay_with_my_wallet": pay_with_my_wallet,
-      "my_wallet_instructions": MyWalletController.text,
+      "my_wallet_instructions": MyWalletInstructionController.text,
+      "my_wallet": MyWalletController.text,
+      "my_wallet_paylink": MyWalletLinkController.text,
       "messages": [],
       "users": [],
       "wait_list": [],
+      "invited_users_list": [],
       "approved": false,
+      "unlimited_users": limited_unlimited_users,
     }).then((value) {
       SendIviteToOrganizer(urrr,value.id);
       MyOrganizerEvents.add(value.id);
@@ -366,6 +388,8 @@ class _AddEventPageState extends State<AddEventPage> {
         "organizer_events":MyOrganizerEvents
       });
     });
+
+    ScaffoldMessa("Please wait while your Event is being verified");
 
     setState(() {
       WaitForNextStep=false;
@@ -419,11 +443,15 @@ class _AddEventPageState extends State<AddEventPage> {
       "short_address":ShortAdresController.text,
       "location_info":LocationInfoController.text,
       "parking_info":ParkingInfoController.text,
+      "instagram":InstagramController.text,
+      "facebook":FacebookController.text,
       "is_online":IsOnline,
       "is_indor":InDoor,
       "peoples":0,
       "pay_with_my_wallet": pay_with_my_wallet,
-      "my_wallet_instructions": MyWalletController.text,
+      "my_wallet_instructions": MyWalletInstructionController.text,
+      "my_wallet": MyWalletController.text,
+      "my_wallet_paylink": MyWalletLinkController.text,
       "max_peoples":int.parse(MaxPeoplesController.text),
       // "tags":TagController.text.replaceAll(' ', '').split(','),
       "organizers":[_auth.currentUser!.phoneNumber],
@@ -431,6 +459,7 @@ class _AddEventPageState extends State<AddEventPage> {
       "additional_photo_links": AdditinalImgLinks,
       "messages": [],
       "users": [],
+      "unlimited_users": limited_unlimited_users,
     });
 
 
@@ -461,7 +490,7 @@ class _AddEventPageState extends State<AddEventPage> {
     } else if(MyDuration.inMinutes==0){
       ScaffoldMessa("Please fill \"Duration\"");
       return false;
-    } else if(pay_with_my_wallet&&MyWalletController.text.length==0){
+    } else if(pay_with_my_wallet&&MyWalletInstructionController.text.length==0){
       ScaffoldMessa("Please fill payment instructions");
       return false;
     } else if(AdditionalTextLength>0&&((EventNameController1.text.length==0||AboutController1.text.length==0))){
@@ -513,24 +542,7 @@ class _AddEventPageState extends State<AddEventPage> {
       body: Stack(
         children: [
           InkWell(
-            onTap: (){
-              EventNameNode.hasFocus ? EventNameNode.unfocus() : null;
-              EventNameNode1.hasFocus ? EventNameNode1.unfocus() : null;
-              EventNameNode2.hasFocus ? EventNameNode2.unfocus() : null;
-
-              AboutNode.hasFocus ? AboutNode.unfocus() : null;
-              AboutNode1.hasFocus ? AboutNode1.unfocus() : null;
-              AboutNode2.hasFocus ? AboutNode2.unfocus() : null;
-
-              AdresNode.hasFocus ? AdresNode.unfocus() : null;
-              ShortAdresNode.hasFocus ? ShortAdresNode.unfocus() : null;
-              PriceNode.hasFocus ? PriceNode.unfocus() : null;
-              MyWalletNode.hasFocus ? MyWalletNode.unfocus() : null;
-              MaxPeoplesNode.hasFocus ? MaxPeoplesNode.unfocus() : null;
-              LocationInfoNode.hasFocus ? LocationInfoNode.unfocus() : null;
-              ParkingInfoNode.hasFocus ? ParkingInfoNode.unfocus() : null;
-
-            },
+            onTap: () => UnfocusNodes(),
             child: SingleChildScrollView(
               child: Container(
                 padding: EdgeInsets.all(16),
@@ -712,72 +724,21 @@ class _AddEventPageState extends State<AddEventPage> {
                       ),
                     ],
                     SizedBox(height: 16,),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("Pay for my own wallet",style: TextStyle(fontSize: 16,fontWeight: FontWeight.w700),),
-                        CupertinoSwitch(
-                            value: pay_with_my_wallet,
-                            activeColor: PrimaryCol,
-                            onChanged: (value) async{
-                              setState(() {
-                                pay_with_my_wallet=!pay_with_my_wallet;
-                              });
-                            }
-                        ),
-                      ],
-                    ),
-                    if(pay_with_my_wallet) ...[
-                      SizedBox(height: 4,),
-                      Text("After users transfer funds to you, you will need to add them to the event list in the users section of your event",style: TextStyle(fontSize: 13,color: Colors.grey,fontWeight: FontWeight.w500,height: 1.5),),
-                      SizedBox(height: 16,),
-                      FormPro(MyWalletController,MyWalletNode,"Pay instructions",16,true,""),
-                    ] else ...[
-                      SizedBox(height: 16,),
-                    ],
+                    SocialMediaToggle(),
+                    if(social_media_exist) SocialMediaFields()
+                    else SizedBox(height: 16),
+                    PaymentToggle(),
+                    if(pay_with_my_wallet) MyWalletFields()
+                    else SizedBox(height: 16),
+                    LimitedUsersToggle(),
+                    SizedBox(height: 16,),
                     FormPro(PriceController,PriceNode,"Price",16,false,"\$"),
                     FormPro(EventNameController,EventNameNode,"Event name",16,true,""),
                     FormPro(AboutController,AboutNode,"About",16,true,""),
                     FormPro(MaxPeoplesController,MaxPeoplesNode,"Max peoples",16,false,""),
-                    Stack(
-                      children: [
-                        FakeFormPro("Duration "+(MyDuration as Duration).inMinutes.toString()+" min."),
-                        InkWell(
-                          onTap: (){
-                            setState(() {
-                              BackDrop=true;
-                              ShowPicker=true;
-                            });
-                          },
-                          child: Container(
-                            height: 48,
-                          ),
-                        )
-                      ],
-                    ),
+                    ChoiceDurationForm(),
                     SizedBox(height: 16,),
-                    Stack(
-                      children: [
-                        FakeFormPro(
-                          ((_dates.first as DateTime).day<10 ? "0"+(_dates.first as DateTime).day.toString() : (_dates.first as DateTime).day.toString() )+" "+
-                              DateFormat.MMMM().format(_dates.first as DateTime).toString()+" "+
-                              (_dates.first as DateTime).year.toString()+", "+
-                              DateFormat('HH:mm').format(_dates.first as DateTime).toString()
-                        ),
-                        InkWell(
-                          onTap: (){
-                            setState(() {
-                              print("ss");
-                              BackDrop=true;
-                              ShowCallendar=true;
-                            });
-                          },
-                          child: Container(
-                            height: 48,
-                          ),
-                        )
-                      ],
-                    ),
+                    ChoiceDateForm(),
                     SizedBox(height: 24,),
                     // FormPro(TagController,TagNode,"Tags separated by commas",16,true,""),
                     TextPlusButton("Invite organizers",(){
@@ -1120,6 +1081,158 @@ class _AddEventPageState extends State<AddEventPage> {
         ],
       ),
       bottomNavigationBar: BottomNavBarPro(context, 2),
+    );
+  }
+
+  Stack ChoiceDateForm() {
+    return Stack(
+                    children: [
+                      FakeFormPro(
+                        ((_dates.first as DateTime).day<10 ? "0"+(_dates.first as DateTime).day.toString() : (_dates.first as DateTime).day.toString() )+" "+
+                            DateFormat.MMMM().format(_dates.first as DateTime).toString()+" "+
+                            (_dates.first as DateTime).year.toString()+", "+
+                            DateFormat('HH:mm').format(_dates.first as DateTime).toString()
+                      ),
+                      InkWell(
+                        onTap: (){
+                          setState(() {
+                            print("ss");
+                            BackDrop=true;
+                            ShowCallendar=true;
+                          });
+                        },
+                        child: Container(
+                          height: 48,
+                        ),
+                      )
+                    ],
+                  );
+  }
+
+  Stack ChoiceDurationForm() {
+    return Stack(
+                    children: [
+                      FakeFormPro("Duration "+(MyDuration as Duration).inMinutes.toString()+" min."),
+                      InkWell(
+                        onTap: (){
+                          setState(() {
+                            BackDrop=true;
+                            ShowPicker=true;
+                          });
+                        },
+                        child: Container(
+                          height: 48,
+                        ),
+                      )
+                    ],
+                  );
+  }
+
+  void UnfocusNodes() {
+    EventNameNode.hasFocus ? EventNameNode.unfocus() : null;
+    EventNameNode1.hasFocus ? EventNameNode1.unfocus() : null;
+    EventNameNode2.hasFocus ? EventNameNode2.unfocus() : null;
+
+    AboutNode.hasFocus ? AboutNode.unfocus() : null;
+    AboutNode1.hasFocus ? AboutNode1.unfocus() : null;
+    AboutNode2.hasFocus ? AboutNode2.unfocus() : null;
+
+    AdresNode.hasFocus ? AdresNode.unfocus() : null;
+    ShortAdresNode.hasFocus ? ShortAdresNode.unfocus() : null;
+    PriceNode.hasFocus ? PriceNode.unfocus() : null;
+    MyWalletInstructionNode.hasFocus ? MyWalletInstructionNode.unfocus() : null;
+    MyWalletNode.hasFocus ? MyWalletInstructionNode.unfocus() : null;
+    MyWalletLinkNode.hasFocus ? MyWalletInstructionNode.unfocus() : null;
+
+    InstagramNode.hasFocus ? InstagramNode.unfocus() : null;
+    FacebookNode.hasFocus ? FacebookNode.unfocus() : null;
+
+    MaxPeoplesNode.hasFocus ? MaxPeoplesNode.unfocus() : null;
+    LocationInfoNode.hasFocus ? LocationInfoNode.unfocus() : null;
+    ParkingInfoNode.hasFocus ? ParkingInfoNode.unfocus() : null;
+  }
+
+  Widget MyWalletFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 4,),
+        Text("Cannot be edited after an event has been published",style: TextStyle(fontSize: 13,color: Colors.red,fontWeight: FontWeight.w500,height: 1.5),),
+        SizedBox(height: 4,),
+        Text("After users transfer funds to you, you will need to add them to the event list in the users section of your event",style: TextStyle(fontSize: 13,color: Colors.grey,fontWeight: FontWeight.w500,height: 1.5),),
+        SizedBox(height: 16,),
+        FormPro(MyWalletInstructionController,MyWalletInstructionNode,"Pay instructions",16,true,""),
+        FormPro(MyWalletController,MyWalletNode,"My wallet (optional)",16,true,""),
+        FormPro(MyWalletLinkController,MyWalletLinkNode,"Pay link (optional)",16,true,""),
+      ],
+    );
+  }
+
+  Widget SocialMediaFields() {
+    return Column(
+      children: [
+        SizedBox(height: 16,),
+        FormPro(InstagramController,InstagramNode,"Instagram link",16,true,""),
+        FormPro(FacebookController,FacebookNode,"Facebook link",16,true,""),
+      ],
+    );
+  }
+
+  Row PaymentToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("Payments on my own wallet",style: TextStyle(fontSize: 16,fontWeight: FontWeight.w700),),
+        CupertinoSwitch(
+            value: pay_with_my_wallet,
+            activeColor: PrimaryCol,
+            onChanged: (value) async{
+              if(widget.is_new) {
+                setState(() {
+                  pay_with_my_wallet=!pay_with_my_wallet;
+                });
+              }
+            }
+        ),
+      ],
+    );
+  }
+
+  Row LimitedUsersToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("Unlimited users count",style: TextStyle(fontSize: 16,fontWeight: FontWeight.w700),),
+        CupertinoSwitch(
+            value: limited_unlimited_users,
+            activeColor: PrimaryCol,
+            onChanged: (value) async{
+              if(widget.is_new) {
+                setState(() {
+                  limited_unlimited_users=!limited_unlimited_users;
+                });
+              }
+            }
+        ),
+      ],
+    );
+  }
+
+  Row SocialMediaToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("Social media",style: TextStyle(fontSize: 16,fontWeight: FontWeight.w700),),
+        CupertinoSwitch(
+            value: social_media_exist,
+            activeColor: PrimaryCol,
+            onChanged: (value) async{
+              setState(() {
+                social_media_exist=!social_media_exist;
+              });
+            }
+        ),
+      ],
     );
   }
 }

@@ -494,7 +494,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                     SizedBox(width: 8,),
                   ] else ...[
                     SizedBox(width: 12,),
-                    MessageFieldPro(context,widget.MessageController,widget.MessageNode,"Text here",image_load ? 48 : 28,() async{
+                    MessageFieldPro(context: context,controller: widget.MessageController,node: widget.MessageNode,hint: "Text here",space_left: image_load ? 48 : 28,onFieldSubmitted: () async{
                       if(!AwaitBool) {
                         if(widget.MessageController.text.length==0){
                           if(!AudioExit||AudioRecording){
@@ -507,7 +507,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                           SendMessage();
                         }
                       }
-                    }),
+                    },onChanged:(){setState(() {});}),
                     SizedBox(width: 12,),
                   ],
                   InkWell(
@@ -529,7 +529,7 @@ class _ChatWidgetState extends State<ChatWidget> {
 
                     },
                     child: Padding(
-                      padding: EdgeInsets.only(bottom: AwaitBool ? 16.0 : 8.0),
+                      padding: EdgeInsets.only(bottom: AwaitBool ? 16.0 : 10.0),
                       child: AwaitBool ? CupertinoActivityIndicator(color: Colors.black,) :
                       widget.MessageController.text.length==0&&!image_load ?
                       AudioRecording ? Icon(CupertinoIcons.stop_fill) :

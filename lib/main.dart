@@ -32,6 +32,7 @@ void TestFunc(){
 void main() async{
   await WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
+  FirebaseFirestore.instance.settings = Settings(persistenceEnabled: false);
   Stripe.publishableKey="pk_test_51O9GRSLy45iyimM2gujSUlZoWEizSkMSZ6U5MWPzQkX3vb7aQEV2sZ7piRxlVd7dPz5s2lhUVxNQGONJUpgGFFh200ycuppluD";
   await Stripe.instance.applySettings();
   final appDocumentDirectory = await getApplicationDocumentsDirectory();
@@ -80,7 +81,7 @@ class MyApp extends StatelessWidget {
           appBarTheme: const AppBarTheme(elevation: 1),
         ),
         home: statuss==null ? WelcomePage() : EventListPage(IsMyEvents: false, IsMyOrganizerEvents: false, ApproveWidgets: false, ),
-        // home: PdfTest(),
+        // home: WelcomePage(),
       ),
     );
   }

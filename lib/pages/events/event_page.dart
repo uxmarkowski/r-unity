@@ -8,19 +8,23 @@ import 'package:event_app/pages/chat/chat_page.dart';
 import 'package:event_app/pages/sign/welcome_page.dart';
 import 'package:event_app/widgets/app_bar.dart';
 import 'package:event_app/widgets/bottom_nav_bar.dart';
+import 'package:event_app/widgets/user_message.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:full_screen_image/full_screen_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as GM;
 import 'package:map_launcher/map_launcher.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../screens/card_form_screen.dart';
 import '../../widgets/custom_route.dart';
+import '../../widgets/event_page_functions.dart';
 import '../friends_page.dart';
 
 
@@ -43,11 +47,13 @@ class _EventPageState extends State<EventPage> {
   int? groupValue = 0;
   int peoples_length=0;
 
-  var EventUsersList=[]; var EventUsersWaitList=[]; var EventOrganizerList=[]; var EventUsersListData=[]; var MessageList=[];
+  var EventUsersList=[]; var EventUsersWaitList=[]; var EventUsersInviteList=[]; var EventOrganizerList=[]; var EventUsersListData=[]; var MessageList=[];
 
   bool IsUserIn=false;
   bool IAmOrganizer=false;
   bool IAmAdmin=false;
+  bool IAmInWaitList=false;
+  bool IAmInvited=false;
   bool show_buttons=false;
 
   TextEditingController MessageController = TextEditingController();
@@ -71,7 +77,7 @@ class _EventPageState extends State<EventPage> {
   }
 
   void GetEventUsers() async{
-    EventUsersListData=[]; EventOrganizerList=[]; EventUsersList=[]; EventUsersWaitList=[];
+    EventUsersListData=[]; EventOrganizerList=[]; EventUsersList=[]; EventUsersWaitList=[]; var EventUsersInviteList=[];
 
     var EventData=await firestore.collection("Events").doc(widget.data['doc_id']).get();
     var Mydata=await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).get();
@@ -79,12 +85,18 @@ class _EventPageState extends State<EventPage> {
 
     EventUsersList=EventData.data()!['users']; EventOrganizerList=EventData.data()!['organizers'];
     if((EventData.data() as Map).containsKey("wait_list")) EventUsersWaitList=EventData.data()!['wait_list'];
+    if((EventData.data() as Map).containsKey("invited_users_list")) EventUsersInviteList=EventData.data()!['invited_users_list'];
 
     // await Future.forEach(EventOrganizerList, (element) async{
     //   if(element==_auth.currentUser!.phoneNumber){ setState(() {IsUserIn=true;});} // Проверка юзера на наличие в мероприятии
     // });
 
+    await Future.forEach(EventUsersInviteList, (element) async{
+      if(element==_auth.currentUser!.phoneNumber){ setState(() {IAmInvited=true;});} // Проверка себя на наличие в вейтлисте
+    });
+
     await Future.forEach(EventUsersWaitList, (element) async{
+      if(element==_auth.currentUser!.phoneNumber){ setState(() {IAmInWaitList=true;});} // Проверка себя на наличие в вейтлисте
       var data=await firestore.collection("UsersCollection").doc(element).get();
       var userdata=data.data();
       userdata!["role"]=-1;
@@ -93,7 +105,7 @@ class _EventPageState extends State<EventPage> {
     });
 
     await Future.forEach(EventOrganizerList, (element) async{
-      if(element==_auth.currentUser!.phoneNumber){ setState(() {IAmOrganizer=true;});} // Проверка юзера на наличие в мероприятии
+      if(element==_auth.currentUser!.phoneNumber){ setState(() {IAmOrganizer=true;});} // Проверка организатора на наличие в мероприятии
       var data=await firestore.collection("UsersCollection").doc(element).get();
       var userdata=data.data();
       userdata!["role"]=1;
@@ -101,14 +113,14 @@ class _EventPageState extends State<EventPage> {
       EventUsersListData.add(userdata);
     });
 
+
     await Future.forEach(EventUsersList, (element) async{
       if(element==_auth.currentUser!.phoneNumber){ setState(() {IsUserIn=true;});} // Проверка юзера на наличие в мероприятии
       var data=await firestore.collection("UsersCollection").doc(element).get();
       var userdata=data.data();
       userdata!["role"]=0;
       userdata!["doc_id"]=data.id;
-      (EventUsersListData.any((user) => user['phone']==element)) // проверка себя в списке организаторов
-      // (element==_auth.currentUser!.phoneNumber&&IAmOrganizer) // проверка себя в списке организаторов
+      (EventUsersListData.any((user) => user['phone']==element)) // проверка себя в списке людей
           ?  null : EventUsersListData.add(userdata);
     });
 
@@ -121,63 +133,68 @@ class _EventPageState extends State<EventPage> {
     setState(() {show_buttons=true;});
   }
 
-  void JoinButton(UserIn) async{
-  bool pay_with_my_wallet=false;
+  void JoinButton(UserIn,DocId) async{
+  bool pay_with_my_wallet=false; if((widget.data as Map).containsKey("pay_with_my_wallet")) pay_with_my_wallet=widget.data["pay_with_my_wallet"];
 
   var UserEventsDoc=await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).get();
   var UserEvents=(UserEventsDoc.data()!['events'] as List);
-  if((widget.data as Map).containsKey("pay_with_my_wallet")) pay_with_my_wallet=widget.data["pay_with_my_wallet"];
 
-    // if(EventUsersList.length!=0){
       if(UserIn){
-        print("Удаление юзера");
-        bool success=await ChangeBalance(false,pay_with_my_wallet);
-        if(success){
+        print("Удаление юзера (себя)");
+        bool success=await DeleteMySelfDialog();
+        if(success) success = await ChangeBalance(false,pay_with_my_wallet);
+        if(success) {
           EventUsersList.removeWhere((element) => element==_auth.currentUser!.phoneNumber);
           EventUsersListData.removeWhere((element) => element['phone']==_auth.currentUser!.phoneNumber);
+          EventUsersWaitList.removeWhere((element) => element==_auth.currentUser!.phoneNumber);
           UserEvents.removeWhere((element) => element==widget.data['doc_id']);
           setState(() {
-            IsUserIn=!UserIn;
+            IsUserIn=false;
+            IAmInWaitList=false;
             peoples_length=EventUsersList.length;
           });
-          widget.data['price']!=0 ? ScaffoldMessa("You left the event, your money has been returned") : ScaffoldMessa("You left the event");
+          (widget.data['price']==0||pay_with_my_wallet) ? ScaffoldMessa("You left the event",context) : ScaffoldMessa("You left the event, your money has been returned",context);
         }
 
-      } else {
-        print("Добавление юзера");
+      } else if(!UserIn) {
+        print("Добавление юзера (себя)");
 
-        bool success=widget.data['price']!="0" ? await ChangeBalance(true,pay_with_my_wallet) : true;
+        bool success=widget.data['price']!="0" ? // Мероприятие платное
+        (pay_with_my_wallet ? // Оплатить
+        await PayForOrganizerWallet() :
+        await ChangeBalance(true,pay_with_my_wallet)
+        ) :
+        true; // Пустить
 
-        if(success){
+        if((success&&!pay_with_my_wallet)||IAmInvited){
 
           EventUsersList.add(_auth.currentUser!.phoneNumber);
           UserEvents.add(widget.data['doc_id']);
-          setState(() {
-            IsUserIn=!UserIn;
-            peoples_length=EventUsersList.length;
-          });
-          ScaffoldMessa("You have been added to the event, welcome!");
-        }
+          setState(() {IsUserIn=!UserIn; peoples_length=EventUsersList.length;});
+          ScaffoldMessa("You have been added to the event, welcome!",context);
 
+        } else if(success&&pay_with_my_wallet){
+
+          EventUsersWaitList.add(_auth.currentUser!.phoneNumber);
+          setState(() { IAmInWaitList=true; });
+          ScaffoldMessaLong("Thank you for your application, after payment wait for the organizer to accept you to the event. You will receive a notification",context);
+
+        }
       }
 
+    await firestore.collection("Events").doc(widget.data['doc_id']).update(
+        {"users":EventUsersList,
+          "peoples":EventUsersList.length,
+          "wait_list":EventUsersWaitList,
+          "invited_users_list":EventUsersInviteList,
+        }); // Добавляем юзера в список
 
-    await firestore.collection("Events").doc(widget.data['doc_id']).update({"users":EventUsersList,"peoples":EventUsersList.length}); // Добавляем юзера в список
     await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).update({"events":UserEvents});
     GetEventUsers();
 
   }
 
 
-
-
-  void ScaffoldMessa(message){
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      duration: Duration(seconds: 3),
-      backgroundColor: PrimaryCol,
-    ));
-  }
 
   Future<bool> ChangeBalance(IsSpent,pay_with_my_wallet)async {
 
@@ -227,8 +244,9 @@ class _EventPageState extends State<EventPage> {
       }
 
     } else {
-
-      await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).update({"balance":UserBalance+(int.parse(widget.data['price']))});
+      if(!pay_with_my_wallet) {
+        await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).update({"balance":UserBalance+(int.parse(widget.data['price']))});
+      }
       return true;
     }
 
@@ -236,55 +254,160 @@ class _EventPageState extends State<EventPage> {
 
   }
 
-  Future<bool> PayForOrganizerWallet(IsSpent,pay_with_my_wallet)async {
+  Future<bool> PayForOrganizerWallet()async {
 
 
     var UserEventsDoc=await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).get();
     var result=await showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: Text("Send money to organizer wallet and wait for accept"),
-        content: null,
+        title: Text("Pay to organizer wallet"),
+        content: Column(
+          children: [
+            SizedBox(height: 16),
+            Text("Send money to the organizer and put your ID number as a comment so that the organizer can add you to the roster"),
+            SizedBox(height: 12,),
+            Text("Instruction: "+widget.data['my_wallet_instructions']),
+            if(widget.data['my_wallet'].length!=0)...[
+              SizedBox(height: 12,),
+              Text("Organizer wallet: "+widget.data['my_wallet']),
+            ],
+            Divider(height: 32,color: Colors.black26,),
+            Material(
+              color: Color.fromRGBO(0, 0, 0, 0),
+              child: InkWell(
+                onTap: () async{
+                  await Clipboard.setData(ClipboardData(text: DateTime.now().millisecondsSinceEpoch.toString()));
+                  ScaffoldMessa("Text copied",context);
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("ID "+DateTime.now().millisecondsSinceEpoch.toString()+"   ",style: TextStyle(fontSize: 16,fontWeight: FontWeight.w500),),
+                    Icon(Icons.copy,size: 20,),
+                    // Row(
+                    //   children: [
+                    //     Text("Copy   ",style: TextStyle(fontSize: 16,fontWeight: FontWeight.w500),),
+                    //     Icon(Icons.copy,size: 20,),
+                    //   ],
+                    // ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: <Widget>[
           CupertinoDialogAction(
-            child: Text("Cancel"),
-
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-          CupertinoDialogAction(
-            child: Text("Accept"),
+            child: Text("OK"),
             isDefaultAction: true,
             onPressed: () => Navigator.of(context).pop(true),
           ),
+          if(widget.data['my_wallet_paylink'].length!=0) ...[
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: Text("Pay link"),
+              onPressed: () async{
+                var url = widget.data['my_wallet_paylink'];
+                final uri = Uri.parse(url);
+                if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+                } else {
+                throw 'Could not launch $url';
+                }
+              },
+            ),
+          ],
         ],
       ),
     );
 
     if(result) {
-      var success=false;
-      final page = CardFormScreen(type: "event",price: widget.data!['price'],);
-      await Navigator.of(context).push(CustomPageRoute(page)).then((value) => success=value);
-      if(success) {
-
-        return true;
-      } else {
-        return false;
-      };
+      return true;
     }
 
     return false;
 
   }
 
+  void AddUserFromWaitList(user_id) async{
+    var EventData=await firestore.collection("Events").doc(widget.data['doc_id']).get();
+    var _WaitList=EventData.data()!['wait_list'] as List;
+    var _UsersList=EventData.data()!['users'] as List;
+    int _EventUsersList=EventData.data()!['peoples'];
+
+    _WaitList.removeWhere((element) => element==user_id);
+    _UsersList.add(user_id);
+
+    await firestore.collection("Events").doc(widget.data['doc_id']).update({"wait_list":_WaitList,"users":_UsersList,"peoples":_EventUsersList+1});
+    SendAcceptNotification(data: widget.data, doc_id: user_id);
+    GetEventUsers();
+  }
+
+
+  void DeleteUserDialog(user_id,organizer) async{
+    var result=await showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text("Removing the user"),
+        content: Text("Are you sure you want to delete a user?"),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            child: Text("Cancel"),
+            isDefaultAction: false,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CupertinoDialogAction(
+            child: Text("Yes"),
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+
+        ],
+      ),
+    );
+
+    if(result){
+      DeleteUser(user_id, organizer);
+    }
+  }
+
+  Future<bool> DeleteMySelfDialog() async{
+    // bool reuslt=false;
+
+    var result=await showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text("Are you sure you want to get out from this event?"),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            child: Text("Cancel"),
+            isDefaultAction: false,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CupertinoDialogAction(
+            child: Text("Yes"),
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+
+        ],
+      ),
+    );
+
+    return result;
+  }
+
+
   void DeleteUser(user_id,organizer) async{
     print("Удаление юзера");
     var UserEventsDoc=await firestore.collection("UsersCollection").doc(user_id).get();
     var UserEvents=(UserEventsDoc.data()!['events'] as List);
 
-    SendDeleteNotification(user_id);
+    SendDeleteNotification(doc_id: user_id,data: widget.data);
 
-    EventUsersList.removeWhere((element) => element==_auth.currentUser!.phoneNumber);
-    EventUsersListData.removeWhere((element) => element['phone']==_auth.currentUser!.phoneNumber);
+    EventUsersList.removeWhere((element) => element==user_id);
+    EventUsersListData.removeWhere((element) => element['phone']==user_id);
     UserEvents.removeWhere((element) => element==widget.data['doc_id']);
     setState(() {peoples_length=EventUsersList.length;});
 
@@ -296,17 +419,7 @@ class _EventPageState extends State<EventPage> {
 
   }
 
-  void SendDeleteNotification(doc_id) async{
 
-    await firestore.collection("UsersCollection").doc(doc_id).collection("Notifications").add(
-        {
-          "title":"The organizer has removed you from the "+widget.data["header"]+". The money has been refunded to the balance",
-          "photo_link": widget.data["photo_link"].toString(),
-          "type":"delete_notification",
-          "check":false,
-          "date":DateTime.now().millisecondsSinceEpoch
-        });
-  }
 
 
 
@@ -324,26 +437,34 @@ class _EventPageState extends State<EventPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarPro(widget.data['header'].toString()),
+      appBar: EventAppBarPro(title: widget.data['header'].toString(),data: widget.data),
       backgroundColor: groupValue!=2 ? Colors.white : Color.fromRGBO(236, 236, 242, 1),
       body: Stack(
         children: [
           if(groupValue==0) ...[
-            EventDetails(data: widget.data,join_button:(){
+            EventDetails(data: widget.data,join_button:(doc_id){
+
+              // PayForOrganizerWallet();
+              // print(widget.data['doc_id']);
+
               if(IAmOrganizer){
                 final page = AddEventPage(data: widget.data,is_new: false,);
                 Navigator.of(context).push(CustomPageRoute(page));
               } else {
-                JoinButton(IsUserIn);
+                JoinButton(IsUserIn||IAmInWaitList,doc_id);
               }
-            }, peoples: peoples_length, IsUserIn: IsUserIn, IAmOrganizer: IAmOrganizer,show_buttons: show_buttons, IAmAdmin: IAmAdmin,),
+            }, peoples: peoples_length, IsUserIn: IsUserIn, IAmOrganizer: IAmOrganizer,IInWaitList: IAmInWaitList,show_buttons: show_buttons, IAmAdmin: IAmAdmin,),
           ] else if(groupValue==1) ...[
             ListView.separated(
                 padding: EdgeInsets.only(top: 86,left: 16,right: 16), itemCount: EventUsersListData.length, shrinkWrap: true,
                 separatorBuilder: (context,index){return Divider(height: 16,color: Colors.white,);},
                 itemBuilder: (contex,index){
-                  return EventUserCard(context, EventUsersListData[index]['nickname'], EventUsersListData[index]['role']==0 ? "Online" : "Organizer", EventUsersListData[index]['avatar_link'], EventUsersListData[index]['doc_id'],IAmOrganizer,(){
-                    DeleteUser(EventUsersListData[index]['doc_id'],EventUsersListData[index]['role']!=0);
+                  return EventUserCard(context, EventUsersListData[index]['nickname'], EventUsersListData[index]['role']==0 ? "Online" : EventUsersListData[index]['role']==1 ? "Organizer" : "Wait for accept", EventUsersListData[index]['avatar_link'], EventUsersListData[index]['doc_id'],IAmOrganizer,(){
+                    // print(EventUsersListData[index]['doc_id']);
+                    DeleteUserDialog(EventUsersListData[index]['doc_id'], EventUsersListData[index]['role']!=0);
+                    // DeleteUser(EventUsersListData[index]['doc_id'],EventUsersListData[index]['role']!=0);
+                  },(){
+                    AddUserFromWaitList(EventUsersListData[index]['doc_id']);
                   });
                 }
             ),
@@ -416,10 +537,11 @@ class EventDetails extends StatefulWidget {
   final IsUserIn;
   final IAmOrganizer;
   final IAmAdmin;
+  final IInWaitList;
   final peoples;
-  Function() join_button;
+  Function(String) join_button;
   final show_buttons;
-  EventDetails({Key? key,required this.data,required this.IsUserIn,required this.peoples,required this.join_button,required this.IAmOrganizer,required this.IAmAdmin,required this.show_buttons}) : super(key: key);
+  EventDetails({Key? key,required this.data,required this.IsUserIn,required this.peoples,required this.join_button,required this.IAmOrganizer,required this.IAmAdmin,required this.IInWaitList,required this.show_buttons}) : super(key: key);
 
   @override
   State<EventDetails> createState() => _EventDetailsState();
@@ -547,11 +669,11 @@ class _EventDetailsState extends State<EventDetails> {
                                 ),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                      color: CupertinoColors.systemGrey3,
+                                      color: CupertinoColors.black,
                                       borderRadius: BorderRadius.circular(12),
                                       image: DecorationImage(
                                           image: NetworkImage(i),
-                                          fit: BoxFit.cover
+                                          fit: BoxFit.fitWidth
                                       )
                                   ),
                                 )
@@ -563,18 +685,26 @@ class _EventDetailsState extends State<EventDetails> {
                   ),
                 ),
               ] else ...[
-                FullScreenWidget(
-                  disposeLevel: DisposeLevel.Medium,
-                  backgroundIsTransparent: true,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 16),
-                    height: 160,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: CupertinoColors.systemGrey3,
-                        image: DecorationImage(
-                            image: NetworkImage(widget.data['photo_link']),fit: BoxFit.cover
-                        )
+                InkWell(
+                  onTap: (){
+                    setState(() {
+                      big=!big;
+                    });
+                  },
+                  child: AnimatedSize(
+                    curve: Curves.fastLinearToSlowEaseIn,
+                    alignment: Alignment.topCenter,
+                    duration: Duration(milliseconds: 500),
+                    child: Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16),
+                      height:big ? 600 : 160.0,
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: CupertinoColors.systemGrey3,
+                          image: DecorationImage(
+                              image: NetworkImage(widget.data['photo_link']),fit: BoxFit.cover
+                          )
+                      ),
                     ),
                   ),
                 ),
@@ -614,7 +744,7 @@ class _EventDetailsState extends State<EventDetails> {
                         Expanded(
                           child: InkWell(
                             onTap: () async{
-                              widget.join_button();
+                              widget.join_button(_auth.currentUser!.phoneNumber.toString());
                             },
                             child: Container(
                               height: 56,
@@ -623,7 +753,11 @@ class _EventDetailsState extends State<EventDetails> {
                                   color: Colors.black
                               ),
                               child: Center(
-                                child: Text(widget.IAmOrganizer ? "Edit" : widget.IsUserIn ? "Leave" : "Join",style: TextStyle(fontSize: 16,color: Colors.white),),
+                                child: Text(widget.IAmOrganizer ? "Edit" : // Я организатор?
+                                widget.IsUserIn||widget.IInWaitList ? // Я внутри?
+                                "Leave" : // Выйти
+                                "Join", // Войти
+                                  style: TextStyle(fontSize: 16,color: Colors.white),),
                               ),
                             ),
                           ),
@@ -632,8 +766,8 @@ class _EventDetailsState extends State<EventDetails> {
                         Expanded(
                           child: InkWell(
                             onTap: (){
-                              final page = FriendListPage();
-                              Navigator.of(context).push(CustomPageRoute(page));
+                              final page = FriendListPage(need_to_add_friend: true);
+                              Navigator.of(context).push(CustomPageRoute(page)).then((value) => print(value));
                             },
                             child: Container(
                               height: 56,
@@ -654,10 +788,10 @@ class _EventDetailsState extends State<EventDetails> {
                     SizedBox(height: 12,),
                     InkWell(
                       onTap: () async{
-                        await firestore.collection("Events").doc(widget.data['doc_id']).update({"approved":true});
                         setState(() {
                           IsApproved=true;
                         });
+                        await firestore.collection("Events").doc(widget.data['doc_id']).update({"approved":true});
                       },
                       child: Container(
                         height: 56,

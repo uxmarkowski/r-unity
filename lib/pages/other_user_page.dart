@@ -229,7 +229,7 @@ class _OtherUserPageState extends State<OtherUserPage> {
                 // SizedBox(height: 8),
                 // Text(Phone,style: TextStyle(color: Colors.grey,fontWeight: FontWeight.w600,fontSize: 16),),
                 SizedBox(height: 32,),
-                ButtonPro(!friend_exist ? request_exist ? "Wait for accept request" : "Send friends request" : "Chat",ChatButton, false)
+                ButtonPro(!friend_exist ? request_exist ? "Requested" : "Add friend" : "Chat",ChatButton, false)
               ] else ...[
                 SizedBox(height: 24,),
                 Center(child: CupertinoActivityIndicator(color: Colors.black,radius: 16,))
