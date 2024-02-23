@@ -70,7 +70,17 @@ dependencies:
   full_screen_image:
   map_launcher:
   country_list_pick:
+  dropdown_button2:
+  instant:
   flutter_cached_pdfview:
+  video_player:
+  toastification:
+  pull_to_refresh:
+
+
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.17.0
 
 
 
@@ -96,12 +106,16 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
 
   # To add assets to your application, add an assets section, like this:
   assets:
     - lib/assets/
     - lib/assets/Icons/Bold/
     - lib/assets/Icons/Light/
+    - lib/assets/Flag/
+    - lib/l10n/app_en.arb
+    - lib/l10n/app_ru.arb
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

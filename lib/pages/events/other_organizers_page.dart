@@ -26,26 +26,26 @@ class _OtherOrganizersPageState extends State<OtherOrganizersPage> {
   void GetOrganizers() async {
 
     OrganizersList = [];
-    var Data = await firestore.collection("UsersCollection").get();
-    var MyData = await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).get();
-    var Friends = MyData.data()!["friends"] as List;
-    print(Friends.toString());
-    var OrganizersDocs = Data.docs;
+    var FriendsCollection= await firestore.collection("UsersCollection").doc(_auth.currentUser!.phoneNumber).collection("Friends").get();
 
-    await Future.forEach(OrganizersDocs, (doc) async{
+
+    await Future.forEach(FriendsCollection.docs, (doc) async{
 
       var UserInfo=await firestore.collection("UsersCollection").doc(doc.id).get();
 
 
-      if(UserInfo.data()!['role']==1&&(_auth.currentUser!.phoneNumber!=UserInfo.id)&&Friends.where((element) => element['phone']==doc.id).length>0){
-        OrganizersList.add({
-          "name":UserInfo.data()!['nickname'],
-          "status":"status",
-          "photo":UserInfo.data()!['avatar_link'],
-          "id":doc,
-          "phone":UserInfo.id,
-        });
+      if((UserInfo.data() as Map).containsKey('role')){
+        if(UserInfo.data()!['role']==1){
+          OrganizersList.add({
+            "name":UserInfo.data()!['nickname'],
+            "status":"status",
+            "photo":UserInfo.data()!['avatar_link'],
+            "id":doc,
+            "phone":UserInfo.id,
+          });
+        }
       }
+
 
     });
     setState(() { });

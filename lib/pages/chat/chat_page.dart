@@ -5,13 +5,14 @@ import 'dart:io';
 import 'package:app_settings/app_settings.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:event_app/widgets/voice_mes.dart';
+import 'package:event_app/widgets/voice_mes/user_message.dart';
+import 'package:event_app/widgets/voice_mes/voice_mes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -23,7 +24,7 @@ import 'package:record/record.dart';
 import '../../main.dart';
 import '../../widgets/app_bar.dart';
 import '../../widgets/bottom_nav_bar.dart';
-import '../../widgets/contact_noises.dart';
+import '../../widgets/voice_mes/contact_noises.dart';
 import '../global_variables.dart';
 import '../sign/welcome_page.dart';
 
@@ -31,7 +32,8 @@ import '../sign/welcome_page.dart';
 class ChatPage extends StatefulWidget {
   final appbar;
   final doc_id;
-  const ChatPage({Key? key,required this.appbar,required this.doc_id}) : super(key: key);
+  final phone;
+  const ChatPage({Key? key,required this.appbar,required this.doc_id,required this.phone}) : super(key: key);
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -43,8 +45,9 @@ class _ChatPageState extends State<ChatPage> {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   List MessageList=[ ];
+  var image_url="";
 
-  late StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> stream;
+  late StreamSubscription stream;
   final ImagePicker _picker = ImagePicker();
   late XFile? image;
 
@@ -56,50 +59,58 @@ class _ChatPageState extends State<ChatPage> {
 
   
 
-  void SendMessage(MessageList) async{
-
-    firestore.collection("Chats").doc(widget.doc_id).update(
-      {"messages":MessageList}
-    );
-
+  void SendMessage(Message) async{
+    firestore.collection("Chats").doc(widget.doc_id).collection("Messages").add(Message);
   }
 
   void GetAllMessage() async{
-    TestFunc();
-
-    var messages=await firestore.collection("Chats").doc(widget.doc_id).get();
-    print("Получаем сообщения "+widget.doc_id.toString());
-    MessageList=messages.data()!['messages'] as List;
     setState(() {
-
+      MessageList=[];
     });
+
+    var MessagesCollection=await firestore.collection("Chats").doc(widget.doc_id).collection("Messages").get();
+    print("Получаем сообщения "+widget.doc_id.toString());
+    await Future.forEach(MessagesCollection.docs, (message) => MessageList.add(message.data()));
+    // MessageList=messages.data()!['messages'] as List;
+    MessageList.sort((a,b){
+      return DateTime.fromMillisecondsSinceEpoch(a["time"]).compareTo(DateTime.fromMillisecondsSinceEpoch(b["time"]));
+    });
+    if(MessageList.length>MessagesCollection.docs.length) GetAllMessage();
+    setState(() { });
     // UpDateMessage(messages);
   }
 
-  void UpDateMessage(messages){
+  // void UpDateMessage(messages){
+  //
+  //   MessageList=messages.data()!['messages'] as List;
+  //   MessageList.forEach((element) {
+  //     if(element['user']!=_auth.currentUser!.phoneNumber){
+  //       element['status']="sent";
+  //     };
+  //   });
+  //
+  //   AllReaded(MessageList);
+  // }
 
-    MessageList=messages.data()!['messages'] as List;
-    MessageList.forEach((element) {
-      if(element['user']!=_auth.currentUser!.phoneNumber){
-        element['status']="sent";
-      };
+  void AllReaded() async{
+    var MessagesCollection=await firestore.collection("Chats").doc(widget.doc_id).collection("Messages").get();
+
+    await Future.forEach(MessagesCollection.docs, (MessgeDoc) async{
+      if(MessgeDoc.data()['user']!=_auth.currentUser!.phoneNumber){
+        await firestore.collection("Chats").doc(widget.doc_id).collection("Messages").doc(MessgeDoc.id).update({
+          "status":"readed"
+        });
+      }
     });
 
-    AllReaded(MessageList);
-  }
-
-  void AllReaded(messages) async{
-    firestore.collection("Chats").doc(widget.doc_id).update({
-      "messages":messages
-    });
   }
 
   FirebaseWebSocket(Switch){
 
-    final docRef = firestore.collection("Tables").doc(widget.doc_id);
+    final MessagesRef = firestore.collection("Chats").doc(widget.doc_id).collection("Messages");
 
     if(Switch) { print("Слушаем стрим ");
-      stream = docRef.snapshots().listen((event) {GetAllMessage();},
+      stream = MessagesRef.snapshots().listen((event) {print(event.docs.first.data().toString()); GetAllMessage();},
         onError: (error) {print("Listen failed: $error");},
       );
     } else { print("Не слушаем"); stream.cancel();}
@@ -107,10 +118,23 @@ class _ChatPageState extends State<ChatPage> {
   }
 
 
+  void GetUserData() async{
+    var data=await firestore.collection("UsersCollection").doc(widget.phone).get();
+    print("data "+data.data().toString());
+    setState(() {
+      image_url=data.data()!['avatar_link'];
+    });
+
+  }
+
   @override
   void initState() {
+    print("Телефон собеседника "+widget.phone);
+    GetUserData();
+
     GetAllMessage();
     FirebaseWebSocket(true);
+    AllReaded();
 
     // TODO: implement initState
     super.initState();
@@ -118,12 +142,47 @@ class _ChatPageState extends State<ChatPage> {
   }
 
 
+  void DeleteChatHistory() async{
+
+    var result=await showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(AppLocalizations.of(context)!.delete_chat_history),
+        // title: Text("Delete chat history"),
+        content: Text(AppLocalizations.of(context)!.are_you_sure_you_want_to_clear),
+        // content: Text("Are you sure you want to clear the chat for both participants?"),
+        // content: Text(AppLocalizations.of(context)!.this_will_delete_your_account_data),
+        // content: Text("This will delete your account data, including your responses and ratings."),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            child: Text(AppLocalizations.of(context)!.cancel),
+            // child: Text("Cancel"),
+
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CupertinoDialogAction(
+            child: Text("OK"),
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if(result) {
+      var chat_data = await firestore.collection("Chats").doc(widget.doc_id).collection("Messages").get();
+      await Future.forEach(chat_data.docs, (chat_doc) async{
+        await firestore.collection("Chats").doc(widget.doc_id).collection("Messages").doc(chat_doc.id).delete();
+      });
+      GetAllMessage();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color.fromRGBO(236, 236, 242, 1),
-      appBar: AppBarPro(widget.appbar),
+      appBar: ChatAppBarPro(Context: context,title: widget.appbar,user_doc: widget.phone,clear_chat: DeleteChatHistory, image: image_url),
       body: ChatWidget(MessageController: MessageController,MessageNode: MessageNode, MessageList: MessageList,SendMessage: (value){
         SendMessage(value);
       },IsEventChat: false,),
@@ -142,7 +201,7 @@ class ChatWidget extends StatefulWidget {
   final MessageNode;
   final MessageList;
   final IsEventChat;
-  Function(List) SendMessage;
+  Function(Map) SendMessage;
 
   ChatWidget({Key? key,required this.MessageController,required this.MessageNode,required this.MessageList,required this.SendMessage,required this.IsEventChat}) : super(key: key);
 
@@ -167,6 +226,18 @@ class _ChatWidgetState extends State<ChatWidget> {
   bool AudioExit=false;
   bool AudioRecording=false;
   var downloadUrlVoice="";
+  late Timer _timer;
+
+  void startTimer() {
+    const oneSec = const Duration(seconds: 1);
+    _timer = new Timer.periodic(oneSec, (Timer timer) {
+      setState(() {
+
+      });
+      },
+    );
+  }
+
 
 
 
@@ -193,16 +264,20 @@ class _ChatWidgetState extends State<ChatWidget> {
         var result=await showCupertinoDialog(
           context: context,
           builder: (context) => CupertinoAlertDialog(
-            title: Text("Access to your photos"),
-            content: Text("Unfortunately, you have blocked the application from accessing photos. A photo is not required for the application to work, but if you change your mind, you need to go to settings and add it"),
+            title: Text(AppLocalizations.of(context)!.access_to_your_photos),
+            // title: Text("Access to your photos"),
+            content: Text(AppLocalizations.of(context)!.unfortunately_you_have_blocked),
+            // content: Text("Unfortunately, you have blocked the application from accessing photos. A photo is not required for the application to work, but if you change your mind, you need to go to settings and add it"),
             actions: <Widget>[
               CupertinoDialogAction(
-                child: Text("Stay"),
+                child: Text(AppLocalizations.of(context)!.stay),
+                // child: Text("Stay"),
 
                 onPressed: () => Navigator.of(context).pop(false),
               ),
               CupertinoDialogAction(
-                child: Text("Add"),
+                child: Text(AppLocalizations.of(context)!.add),
+                // child: Text("Add"),
                 isDefaultAction: true,
                 onPressed: () => Navigator.of(context).pop(true),
               ),
@@ -243,30 +318,30 @@ class _ChatWidgetState extends State<ChatWidget> {
     }
 
 
+    var Message=AudioExit ? {
+      "img":"",
+      "message":downloadUrlVoice,
+      "time":DateTime.now().millisecondsSinceEpoch,
+      "user":_auth.currentUser!.phoneNumber,
+      "status":"sent"
+    } : {
+    "img":photoUrl,
+    "message":widget.MessageController.text,
+    "time":DateTime.now().millisecondsSinceEpoch,
+    "user":_auth.currentUser!.phoneNumber,
+    "status":"sent"
+    };
 
-
-    if(AudioExit) {
-      widget.MessageList.add({
-        "img":"",
-        "message":downloadUrlVoice,
-        "time":DateTime.now().millisecondsSinceEpoch,
-        "user":_auth.currentUser!.phoneNumber,
-        "status":"sent"
-      });
-    } else {
-      widget.MessageList.add({
-        "img":photoUrl,
-        "message":widget.MessageController.text,
-        "time":DateTime.now().millisecondsSinceEpoch,
-        "user":_auth.currentUser!.phoneNumber,
-        "status":"sent"
-      });
-    }
+    // if(AudioExit) {
+    //   widget.MessageList.add(Message);
+    // } else {
+    //   widget.MessageList.add(Message);
+    // }
 
 
     widget.MessageController.clear();
     widget.MessageNode.unfocus();
-    widget.SendMessage(widget.MessageList);
+    widget.SendMessage(Message);
 
     if(image_load&&image!=null){
       photoUrl="";
@@ -278,24 +353,36 @@ class _ChatWidgetState extends State<ChatWidget> {
     setState(() {AudioExit=false;});
   }
 
+
   void Record() async{
-    setState(() {
-      AudioExit=false;
-      AudioRecording=true;
-    });
-    var tempDir = await getTemporaryDirectory();
-    mPath = 'recoed.mp4';
-    // mPath = '${tempDir.path}/flutter_sou
+
+
     print("Start");
     if (await record.hasPermission()) {
+      try {
+        setState(() {
+          AudioExit=false;
+          AudioRecording=true;
+        });
+        startTimer();
+        var tempDir = await getTemporaryDirectory();
+        mPath = 'recoed.mp4';
         await record.start(const RecordConfig(), path: tempDir.path+'/myFile.m4a');
+      } catch (e){
+        UserMessage("Error "+e.toString(), context);
+      }
+
+
+    } else {
+      UserMessage(AppLocalizations.of(context)!.you_have_blocked_the_application_from, context);
+      await Permission.microphone.request();
     }
 
   }
 
   Future<void> stopRecorder() async {
 
-
+    _timer.cancel();
     print("Finish");
     setState(() {
       AwaitBool=true;
@@ -315,11 +402,12 @@ class _ChatWidgetState extends State<ChatWidget> {
         downloadUrlVoice = await voiceRef.getDownloadURL();
         print("URL для загруженного аудио: $downloadUrlVoice");
       } else {
-        print("Путь к аудио пуст. Не удалось остановить запись.");
+        UserMessage("Путь к аудио пуст. Не удалось остановить запись.", context);
       }
     } catch (e) {
-      // Обработка ошибки при остановке записи или загрузке
-      print('Ошибка при остановке записи или загрузке: $e');
+
+      UserMessage("Error "+e.toString(), context);
+      // UserMessage("Ошибка при остановке записи или загрузке", context);
       // Вы можете добавить дополнительные действия в случае ошибки, если это необходимо
     }
 
@@ -494,7 +582,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                     SizedBox(width: 8,),
                   ] else ...[
                     SizedBox(width: 12,),
-                    MessageFieldPro(context: context,controller: widget.MessageController,node: widget.MessageNode,hint: "Text here",space_left: image_load ? 48 : 28,onFieldSubmitted: () async{
+                    MessageFieldPro(context: context,controller: widget.MessageController,node: widget.MessageNode,hint: AppLocalizations.of(context)!.text_here,space_left: image_load ? 48 : 28,onFieldSubmitted: () async{
                       if(!AwaitBool) {
                         if(widget.MessageController.text.length==0){
                           if(!AudioExit||AudioRecording){
@@ -529,10 +617,10 @@ class _ChatWidgetState extends State<ChatWidget> {
 
                     },
                     child: Padding(
-                      padding: EdgeInsets.only(bottom: AwaitBool ? 16.0 : 10.0),
+                      padding: EdgeInsets.only(bottom: AwaitBool ? 16.0 : AudioRecording ? 14.0 : 10.0),
                       child: AwaitBool ? CupertinoActivityIndicator(color: Colors.black,) :
                       widget.MessageController.text.length==0&&!image_load ?
-                      AudioRecording ? Icon(CupertinoIcons.stop_fill) :
+                      AudioRecording ? Icon(CupertinoIcons.stop_fill,color: DateTime.now().second.isEven ? Colors.red : Colors.black,) :
                       (!AudioExit ? SvgPicture.asset("lib/assets/Icons/Bold/Voice.svg",color: Colors.black,width: 28,) : SvgPicture.asset("lib/assets/Icons/Bold/Send.svg",color: Colors.black,width: 28,)) :
                       // SvgPicture.asset("lib/assets/Icons/Bold/Voice.svg",color: Colors.black,width: 28,) :
                       SvgPicture.asset("lib/assets/Icons/Bold/Send.svg",color: Colors.black,width: 28,),

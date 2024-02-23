@@ -1,9 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_list_pick/country_list_pick.dart' as CLP;
 import 'package:event_app/pages/sign/sign_verification.dart';
-import 'package:event_app/widgets/user_message.dart';
+import 'package:event_app/pages/sign/welcome_page.dart';
+import 'package:event_app/widgets/voice_mes/user_message.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../functions/user_functions.dart';
 import '../../widgets/app_bar.dart';
 import '../../widgets/custom_route.dart';
 
@@ -28,10 +33,25 @@ class _SignUpPageState extends State<SignUpPage> {
   FocusNode FirstNameNode=FocusNode();
   FocusNode LastNameNode=FocusNode();
   FocusNode PromoCodeNode=FocusNode();
-  var Country="US";
+
+  String Country="US";
+
+  int GenderValue=0;
+  bool accept_privacy_policy=true;
   bool LoadBool=false;
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  Future<bool> GetNicknames(name) async{
+    bool result=false;
+    var nicknamesCollection = await firestore.collection("Nicknames").get();
+
+    await Future.forEach(nicknamesCollection.docs, (doc) {
+      if(name.toString().toLowerCase()==doc.id.toString().toLowerCase()) result=true;
+    });
+
+    return result;
+  }
 
   Future<bool> CheckUserExist(phone) async{
     setState(() {LoadBool=true;});
@@ -54,11 +74,20 @@ class _SignUpPageState extends State<SignUpPage> {
     return func_value;
   }
 
+  @override
+  void initState() {
+    PhoneController.text="1";
+    // setState(() {
+    //
+    // });
+    // TODO: implement initState
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarPro("Sign up"),
+      appBar: AppBarPro(AppLocalizations.of(context)!.sign_up),
       body: InkWell(
         onTap: (){
           PhoneNode.hasFocus ? PhoneNode.unfocus() : null;
@@ -70,7 +99,7 @@ class _SignUpPageState extends State<SignUpPage> {
         child: Container(
           width: MediaQuery.of(context).size.width,
           height: MediaQuery.of(context).size.height-100,
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.symmetric(horizontal: 24),
           child: SingleChildScrollView(
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,41 +108,55 @@ class _SignUpPageState extends State<SignUpPage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      SizedBox(height: 48,),
+                      BigText(AppLocalizations.of(context)!.enter_profile_information),
+                      // BigText("Enter profile information"),
                       SizedBox(height: 24,),
-                      BigText("Enter profile information"),
-                      SizedBox(height: 24,),
-                      Text("Required",style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),),
+                      Text(AppLocalizations.of(context)!.required,style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),),
+                      // Text("Required",style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),),
                       SizedBox(height: 16,),
-                      PhoneFormPro(PhoneController,PhoneNode,"Phone number"),
+                      PhoneFormPro(PhoneController,PhoneNode,AppLocalizations.of(context)!.phone_number),
                       SizedBox(height: 16,),
-                      FormPro(NickNameController,NickNameNode,"Nickname",0,true,""),
-                      SizedBox(height: 16,),
+                      Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.only(bottom: 16),
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                            color: Color.fromRGBO(239, 239, 255, 1),
+                            borderRadius: BorderRadius.circular(8)
+                        ),
+                        child: TextFormField(
+                          maxLines: null,
+                          focusNode: NickNameNode,
+                          controller: NickNameController,
+                          maxLength: 20,
+                          keyboardType: TextInputType.text,
+                          inputFormatters: <TextInputFormatter>[
+                            FilteringTextInputFormatter.allow(RegExp("[0-9a-zA-Z]")),
+                          ],
+                          style: TextStyle(height: 1.4),
+                          decoration: InputDecoration(
+                            counterText: "",
+                            border: InputBorder.none,
+                            hintText: AppLocalizations.of(context)!.nickname,
+                            // hintText: "Nickname",
+                          ),
+                        ),
+                      ),
+
+                      FormProMinLength(FirstNameController,FirstNameNode,AppLocalizations.of(context)!.first_name,16,true,""),
+                      // FormPro(FirstNameController,FirstNameNode,"First name",16,true,""),
+
                       Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
                             color: Color.fromRGBO(239, 239, 255, 1),
-                            borderRadius: BorderRadius.circular(4)
+                            borderRadius: BorderRadius.circular(8)
                         ),
                         child: Align(
                           alignment: Alignment.bottomLeft,
                           child: CLP.CountryListPick(
                               appBar: AppBarPro("Country"),
-
-                              // if you need custome picker use this
-                              // pickerBuilder: (context, CountryCode countryCode){
-                              //   return Row(
-                              //     children: [
-                              //       Image.asset(
-                              //         countryCode.flagUri,
-                              //         package: 'country_list_pick',
-                              //       ),
-                              //       Text(countryCode.code),
-                              //       Text(countryCode.dialCode),
-                              //     ],
-                              //   );
-                              // },
-
-                              // To disable option set to false
                               theme: CLP.CountryTheme(
                                 isShowFlag: true,
                                 isShowTitle: true,
@@ -131,7 +174,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 print(code.code);
                                 print(code.dialCode);
                                 print(code.flagUri);
-                                print(code.toCountryStringOnly());
+
                                 Country=code.toCountryStringOnly();
                               },
                               // Whether to allow the widget to set a custom UI overlay
@@ -141,25 +184,67 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
                       ),
+                      SizedBox(height: 16,),
+                      Container(
+                        width: double.infinity,
+                        child: CupertinoSlidingSegmentedControl<int>(
+                          backgroundColor: Color.fromRGBO(239, 239, 255, 1),
+                          thumbColor: Color.fromRGBO(196, 196, 241, 1),
+                          padding: EdgeInsets.all(2),
+                          groupValue: GenderValue,
+                          children: {
+                            0: buildSegment(AppLocalizations.of(context)!.male,GenderValue,0),
+                            // 0: buildSegment("Male",GenderValue,0),
+                            1: buildSegment(AppLocalizations.of(context)!.female,GenderValue,1),
+                            // 1: buildSegment("Female",GenderValue,1),
+                            2: buildSegment(AppLocalizations.of(context)!.other,GenderValue,2),
+                            // 2: buildSegment("Other",GenderValue,2),
+                          },
+                          onValueChanged: (value){
+                            setState(() {
+                              GenderValue = value!;
+
+                            });
+
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(AppLocalizations.of(context)!.choose_your_gender,style: TextStyle(height: 1.3,color: Colors.black54,fontSize: 12,fontWeight: FontWeight.w400),),
+                      // Text("Choose your gender in order to see gender-restricted event in R-unity app",style: TextStyle(height: 1.3,color: Colors.black54,fontSize: 12,fontWeight: FontWeight.w400),),
                       SizedBox(height: 24,),
-                      Text("Optional",style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),),
+                      Text(AppLocalizations.of(context)!.optional,style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),),
+                      // Text("Optional",style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),),
                       SizedBox(height: 16,),
-                      FormPro(FirstNameController,FirstNameNode,"First name",0,true,""),
+                      FormProMinLength(LastNameController,LastNameNode,AppLocalizations.of(context)!.last_name,0,true,""),
+                      // FormPro(LastNameController,LastNameNode,"Last name",0,true,""),
                       SizedBox(height: 16,),
-                      FormPro(LastNameController,LastNameNode,"Last name",0,true,""),
-                      SizedBox(height: 16,),
-                      FormPro(PromoCodeController,PromoCodeNode,"Promocode",0,true,""),
+                      FormProMinLength(PromoCodeController,PromoCodeNode,AppLocalizations.of(context)!.promocode,0,true,""),
+                      // FormPro(PromoCodeController,PromoCodeNode,"Promocode",0,true,""),
                       SizedBox(height: 24,),
                     ],
                   ),
-                  ButtonPro("Continue",() async{
+                  ButtonPro(
+                      AppLocalizations.of(context)!.continuee,
+                      // "Continue",
+                          () async{
                     var user_exist=await CheckUserExist("+"+PhoneController.text);
+                    var nickname_exist=await GetNicknames(NickNameController.text);
                     if(user_exist){
-                      UserMessage("User already exist", context);
+                      // UserMessage("User already exist", context);
+                      NeedToLoginAccount(context: context);
+                    } else if(nickname_exist) {
+                      UserMessage("Nickname already exist", context);
+                    } else if(!accept_privacy_policy) {
+                      UserMessage("You need to accept the privacy policy to continue registration", context);
+                    } else if(PhoneController.text.length<6||NickNameController.text.length==0||FirstNameController.text.length==0) {
+                      UserMessage("Fill all required value", context);
                     } else {
+                      await firestore.collection("Nicknames").doc(NickNameController.text).set({"active":true});
+
                       final page = SignVerificationPage(nomber: "+"+PhoneController.text, data: {
                         "phone":PhoneController.text,
-                        "nickname":NickNameController.text,
+                        "nickname":NickNameController.text.trim(),
                         "firstname":FirstNameController.text,
                         "lastname":LastNameController.text,
                         "promocode":LastNameController.text,
@@ -168,13 +253,47 @@ class _SignUpPageState extends State<SignUpPage> {
                         "chats":[],
                         "notifications":[],
                         "role":0,
-                        "country":Country
+                        "gender":GenderValue,
+                        "country":Country,
+                        "city":"Los Angeles"
                       },
                         is_sign_in: false,
                       );
                       Navigator.of(context).push(CustomPageRoute(page));
                     }
-                  },LoadBool)
+                  },LoadBool),
+                  SizedBox(height: 16,),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(width: 24,height: 24,child: Checkbox(value: accept_privacy_policy, onChanged: (value){setState(() {accept_privacy_policy=!accept_privacy_policy;});})),
+                      SizedBox(width: 12,),
+                      Container(
+                        width: 260,
+
+                        child: InkWell(
+                          onTap: () async{
+                            const url = 'http://r-unity.tilda.ws/privacy_policy';
+                            final uri = Uri.parse(url);
+                            if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri);
+                            } else {
+                            throw 'Could not launch $url';
+                            }
+                          },
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(text: "By clicking “continue” you accept our ",style: TextStyle(fontSize: 16,color: Colors.black.withOpacity(0.65),fontWeight: FontWeight.w500),),
+                                TextSpan(text: "privacy policy",style: TextStyle(fontSize: 16,color: PrimaryCol,fontWeight: FontWeight.w600),),
+                              ],
+                            ),
+                          ),
+                        ))
+                    ],
+                  ),
+                  SizedBox(height: 48,),
                 ]
             ),
           ),
@@ -182,4 +301,18 @@ class _SignUpPageState extends State<SignUpPage> {
       ),
     );
   }
+}
+
+Widget buildSegment(String text,value,const_value){
+  return Container(
+    padding: EdgeInsets.symmetric(vertical: 12),
+    child: Text(text,style: TextStyle(fontSize: 16, color: Colors.black.withOpacity(value==const_value ? 0.85 : 0.75),fontWeight: value==const_value ? FontWeight.w700 : FontWeight.w400),),
+  );
+}
+
+Widget buildSegmentTwo(String text){
+  return Container(
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: Text(text),
+  );
 }

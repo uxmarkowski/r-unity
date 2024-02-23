@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:event_app/pages/sign/sign_up_photo.dart';
 import 'package:event_app/pages/sign/welcome_page.dart';
-import 'package:event_app/pages/user_page.dart';
+import 'package:event_app/pages/user/user_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../widgets/app_bar.dart';
 import '../../widgets/custom_route.dart';
 
@@ -112,14 +112,20 @@ class _SignVerificationPageState extends State<SignVerificationPage> {
     _auth.signOut();
 
     var UserCollection=await firestore.collection("UsersCollection").get();
-    final allUsersData = UserCollection.docs.map((doc) => doc.data()).toList();
+    // final allUsersData = UserCollection.docs.map((doc) => doc.data()).toList();
 
-    allUsersData.forEach((users) {
-      if(users['phone']==(widget.nomber)){
+    await Future.forEach(UserCollection.docs, (user_doc) {
+      if(user_doc.id==(widget.nomber)){
         IsUserExist=true;
         print("Юзер найден");
       }
     });
+    // allUsersData.forEach((users) {
+    //   if(users['phone']==(widget.nomber)){
+    //     IsUserExist=true;
+    //     print("Юзер найден");
+    //   }
+    // });
 
     print("Вход");
     Usercredential = PhoneAuthProvider.credential(smsCode: NumberController.text, verificationId: verificationIdd);
@@ -160,15 +166,21 @@ class _SignVerificationPageState extends State<SignVerificationPage> {
           "chats":[],
           "notifications":[],
           "chat_requests":[],
-          "role":1,
+          "role":0,
+          "verified":false,
+          "instagram":"",
+          "about":"",
+          "gender":widget.data['gender'],
           "country":widget.data['country'],
           "balance":0,
+          "show_events_for_friends_only":false,
           "admin":false,
           "friends":[],
         });
 
-        await firestore.collection("UsersCollection").doc(widget.nomber).collection("Notifcations").add({
+        await firestore.collection("UsersCollection").doc(widget.nomber).collection("Notifications").add({
           "title":"Welcome",
+          "title_rus":"Добро пожаловать",
           "photo_link": "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fHBhcnR5fGVufDB8fDB8fHww",
           "type":"welcome_notification",
           "check":false,
@@ -231,61 +243,72 @@ class _SignVerificationPageState extends State<SignVerificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarPro("Sign in"),
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height-100,
-        padding: EdgeInsets.all(24),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  SizedBox(height: 56,),
-                  BigText("Enter code"),
-                  SizedBox(height: 8,),
-                  Center(child: Text(ErroeMessage.length==0 ? "We have sent you an SMS with the code to +"+widget.nomber : ErroeMessage,textAlign: TextAlign.center,style: TextStyle(height: 1.4,color: ErroeMessage.length==0 ? Colors.black : Colors.red),)),
-                  SizedBox(height: 24,),
-                  Container(
-                    height: 56,
-                    width: double.infinity,
-                    color: Colors.red.withOpacity(0),
-                    child: Stack(
-                      children: [
-                        Opacity(
-                          child: TextFormField(
-                              controller: NumberController,
-                              keyboardType: TextInputType.number,
-                              autofocus: true,
-                              maxLength: 6,
-                              focusNode: FocussNode,
-                              onChanged: (value){setState(() {});
-                                if(NumberController.text.length==6){
-                                  GoLogin();
-
-                                }
-                              }
+      appBar: AppBarPro(AppLocalizations.of(context)!.sign_in),
+      // appBar: AppBarPro("Sign in"),
+      body: InkWell(
+        onTap: (){
+          FocussNode.unfocus();
+        },
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height-100,
+          padding: EdgeInsets.all(24),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  children: [
+                    SizedBox(height: 56,),
+                    BigText(AppLocalizations.of(context)!.enter_code),
+                    // BigText("Enter code"),
+                    SizedBox(height: 8,),
+                    Center(child: Text(ErroeMessage.length==0 ? AppLocalizations.of(context)!.we_have_sent_you+"\n"+widget.nomber : AppLocalizations.of(context)!.we_have_sent_you+" "+ErroeMessage,textAlign: TextAlign.center,style: TextStyle(height: 1.4,color: ErroeMessage.length==0 ? Colors.black : Colors.red),)),
+                    // Center(child: Text(ErroeMessage.length==0 ? "We have sent you an SMS with the code to +"+widget.nomber : ErroeMessage,textAlign: TextAlign.center,style: TextStyle(height: 1.4,color: ErroeMessage.length==0 ? Colors.black : Colors.red),)),
+                    SizedBox(height: 24,),
+                    Container(
+                      height: 56,
+                      width: double.infinity,
+                      child: Stack(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.only(top: NumberController.text.length>=1 ?  0:6),
+                            child: PinCode(NumberController)
                           ),
-                          opacity: 0,
-                        ),
-                        Container(
-                          padding: EdgeInsets.only(top: NumberController.text.length>=1 ?  0:6),
-                          child: PinCode(NumberController)
-                        )
-                      ],
+                          Container(
+                            color: Colors.red.withOpacity(0),
+                            child: Opacity(
+                              child: TextFormField(
+                                  controller: NumberController,
+                                  keyboardType: TextInputType.number,
+                                  autofocus: true,
+                                  maxLength: 6,
+                                  focusNode: FocussNode,
+                                  onChanged: (value){setState(() {});
+                                  if(NumberController.text.length==6){
+                                    GoLogin();
+
+                                  }
+                                  }
+                              ),
+                              opacity: 0,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              TextButton(
-                  onPressed: (){
-                    if(RemainTime==60){
-                      SendFirstCode();
-                    }
-                  }, child: RemainTime==60 ? Text("Resend code",style: TextStyle(color: PrimaryCol,fontWeight: FontWeight.w700,fontSize: 16),) : Text( "Wait "+RemainTime.toString(),style: TextStyle(color: Colors.grey,fontWeight: FontWeight.w500,fontSize: 16),)
-              )
-            ]
+                  ],
+                ),
+                TextButton(
+                    onPressed: (){
+                      if(RemainTime==60){
+                        SendFirstCode();
+                      }
+                    }, child: RemainTime==60 ? Text(AppLocalizations.of(context)!.resend_code,style: TextStyle(color: PrimaryCol,fontWeight: FontWeight.w700,fontSize: 16),) : Text( AppLocalizations.of(context)!.wait+" "+RemainTime.toString(),style: TextStyle(color: Colors.grey,fontWeight: FontWeight.w500,fontSize: 16),)
+                    // }, child: RemainTime==60 ? Text("Resend code",style: TextStyle(color: PrimaryCol,fontWeight: FontWeight.w700,fontSize: 16),) : Text( "Wait "+RemainTime.toString(),style: TextStyle(color: Colors.grey,fontWeight: FontWeight.w500,fontSize: 16),)
+                )
+              ]
+          ),
         ),
       ),
     );

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:app_settings/app_settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:event_app/pages/user_page.dart';
+import 'package:event_app/pages/user/user_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../widgets/app_bar.dart';
 import '../../widgets/custom_route.dart';
 
@@ -39,7 +39,8 @@ class _SignUpPhotoPageState extends State<SignUpPhotoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarPro(widget.type=="Sign" ? "Sign up" : "Edit photo"),
+      appBar: AppBarPro(widget.type=="Sign" ? AppLocalizations.of(context)!.sign_up : AppLocalizations.of(context)!.edit_photo),
+      // appBar: AppBarPro(widget.type=="Sign" ? "Sign up" : "Edit photo"),
       body: Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height-100,
@@ -52,9 +53,11 @@ class _SignUpPhotoPageState extends State<SignUpPhotoPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   SizedBox(height: 24,),
-                  BigTextCenter((widget.type=="Sign" ? "Add" : "Edit")+" profile photo"),
+                  BigTextCenter((widget.type=="Sign" ? AppLocalizations.of(context)!.add : AppLocalizations.of(context)!.edit)+" "+AppLocalizations.of(context)!.profile_photo,),
+                  // BigTextCenter((widget.type=="Sign" ? "Add" : "Edit")+" profile photo"),
                   SizedBox(height: 12,),
-                  Text("Load photo from gallery or stay\n this empty",style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),textAlign: TextAlign.center,),
+                  Text(AppLocalizations.of(context)!.load_photo_from_gallery,style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),textAlign: TextAlign.center,),
+                  // Text("Load photo from gallery or stay\n this empty",style: TextStyle(height: 1.4,fontWeight: FontWeight.w600),textAlign: TextAlign.center,),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -132,7 +135,7 @@ class _SignUpPhotoPageState extends State<SignUpPhotoPage> {
                                                     onPressed: () => Navigator.of(context).pop(false),
                                                   ),
                                                   CupertinoDialogAction(
-                                                    child: Text("add"),
+                                                    child: Text("Add"),
                                                     isDefaultAction: true,
                                                     onPressed: () => Navigator.of(context).pop(true),
                                                   ),
@@ -153,13 +156,14 @@ class _SignUpPhotoPageState extends State<SignUpPhotoPage> {
                                       },
                                       child: Container(
                                         height: 48,
-                                        width: image_load ? 174 : 136,
+                                        width: image_load ? 174 : 144,
                                         decoration: BoxDecoration(
                                             color: Colors.white,
                                             borderRadius: BorderRadius.circular(48)
                                         ),
                                         child: Center(
-                                          child: image_load ? Text("Change photo",style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),) : Text("Add photo",style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),),
+                                          child: image_load ? Text(AppLocalizations.of(context)!.change_photo,style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),) : Text(AppLocalizations.of(context)!.add_photo,style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),),
+                                          // child: image_load ? Text("Change photo",style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),) : Text("Add photo",style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600),),
                                         ),
                                       ),
                                     ),
@@ -231,7 +235,10 @@ class _SignUpPhotoPageState extends State<SignUpPhotoPage> {
               if(image_load) ...[
                 Padding(
                   padding: EdgeInsets.only(bottom: 12),
-                  child: ButtonPro("Continue",() async{
+                  child: ButtonPro(
+                      AppLocalizations.of(context)!.continuee,
+                      // "Continue",
+                          () async{
 
                     setState(() {
                       WaitForNextStep=true;
