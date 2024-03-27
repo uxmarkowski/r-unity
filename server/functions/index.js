@@ -1,30 +1,12 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-//const {onRequest} = require("firebase-functions/v2/https");
-//const logger = require("firebase-functions/logger");
-
-
-
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
-
-
 
 const functions = require("firebase-functions");
-const stripe = require('stripe')(functions.config().stripe.finalkey)
+const stripe = require('stripe')(functions.config().stripe.testkey)
+const admin = require('firebase-admin');
+
+admin.initializeApp(functions.config().firebase);
+
+const db = admin.firestore();
+const fcm = admin.messaging();
 
 const calculateOrderAmount = (items) => {
 return parseInt(items[0].id);
@@ -126,4 +108,56 @@ exports.StripePayEndpointIntentId = functions.https.onRequest(async (req, res) =
         // See https://stripe.com/docs/declines/codes for more.
         return res.send({ error: e.message });
     }
+});
+
+
+exports.send_chat_not = functions.firestore
+  .document("Chats/{chat_id}/Messages/{message_id}")
+  .onCreate((change, context) => {
+
+    let chatRef = db.doc('Chats/'+context.params.chat_id);
+    let messageRef = db.doc('Chats/'+context.params.chat_id+"/Messages/"+context.params.message_id);
+
+      chatRef.get().then(chatSnapshot => {
+        let my_getter = chatSnapshot.get('getter');
+        let my_sender = chatSnapshot.get('sender');
+
+        messageRef.get().then(messageSnapshot => {
+            let user_name = chatSnapshot.get('user');
+            let my_user = user_name!=my_getter ? my_sender : my_getter;
+//            let my_user = +79788759240=="+79788759240" ? "+79788759241" : "+79788759240";
+//            let my_user = +79788759240=="+79788759241" ? "+79788759240" : "+79788759241";
+            let other_user = user_name==my_getter ? my_sender : my_getter;
+            let my_message = messageSnapshot.get('message');
+
+            let userRef = db.doc('UsersCollection/'+my_user);
+            console.log('User name:', my_user);
+            userRef.get().then(userSnapshot => {
+                let tokenplus = userSnapshot.get('token');
+                console.log('User token:', tokenplus);
+
+                const message = {
+                notification: {
+                  "title": "R-Unity",
+                  "body" : my_message
+                },
+
+                  data: {
+                    user_id: other_user,
+                    time: '2:45'
+                  },
+                  token: tokenplus
+                };
+
+                fcm.send(message).then((response) => {
+                    console.log('Successfully sent message:', context.params.userid);
+                    console.log('Successfully sent :', response);
+                }).catch((error) => {console.log('Error sending message:', error);});
+            });
+
+
+        });
+
+
+   });
 });
